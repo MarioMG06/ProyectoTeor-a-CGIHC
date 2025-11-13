@@ -29,6 +29,15 @@ void Animation();
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
+// --- Cámara y personaje principal ---
+bool thirdPerson = false;               // alternar vista
+float cameraDistance = 8.5f;           // distancia tercera persona
+glm::vec3 personajePos(0.0f, 0.0f, 0.0f);
+float personajeRot = 0.0f;             // rotación Y del personaje
+float moveSpeed = 4.0f;
+float turnSpeed = 90.0f;               // grados por segundo
+bool followCharacter = true;
+
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
@@ -230,6 +239,9 @@ int main()
 
     skyboxShader.Use();
     glUniform1i(glGetUniformLocation(skyboxShader.Program, "skybox"), 1);
+
+    // Modelo personaje principal
+    Model Fantasma((char*)"3d-model.obj");
 
     // Modelos entorno
     Model Piso((char*)"Piso.obj");
@@ -550,6 +562,29 @@ int main()
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // ---- Actualizar posición de la cámara según el modo ----
+        if (followCharacter) {
+            if (thirdPerson) {
+                glm::vec3 offset(
+                    -(cameraDistance * sin(glm::radians(personajeRot))),
+                    cameraDistance,
+                    -(cameraDistance * cos(glm::radians(personajeRot)))
+                );
+                camera.SetPosition(personajePos + offset);
+                camera.LookAt(personajePos + glm::vec3(0.0f, 5.0f, 0.0f));
+            }
+            else {
+                glm::vec3 headPos = personajePos + glm::vec3(0.0f, 3.0f, 0.0f);
+                glm::vec3 front(
+                    sin(glm::radians(personajeRot)),
+                    0.0f,
+                    cos(glm::radians(personajeRot))
+                );
+                camera.SetPosition(headPos + (front * 0.6f));
+                camera.LookAt(headPos + front);
+            }
+        }
 
         glm::mat4 projection = glm::perspective(
             glm::radians(camera.GetZoom()),
@@ -1156,6 +1191,16 @@ int main()
             Banquitas.Draw(lightingShader);
         }
 
+        // ----- PERSONAJE PRINCIPAL -----
+        {
+            glm::mat4 modelPersonaje(1.0f);
+            modelPersonaje = glm::translate(modelPersonaje, personajePos);
+            modelPersonaje = glm::rotate(modelPersonaje, glm::radians(personajeRot), glm::vec3(0.0f, 1.0f, 0.0f));
+            modelPersonaje = glm::scale(modelPersonaje, glm::vec3(0.005f));
+
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelPersonaje));
+            Fantasma.Draw(lightingShader);
+        }
 
         // ----- SKYBOX -----
         glDepthFunc(GL_LEQUAL);
@@ -1185,24 +1230,74 @@ int main()
 
 void ProcessInput(Window& window)
 {
-    if (window.IsKeyPressed(GLFW_KEY_W) || window.IsKeyPressed(GLFW_KEY_UP))
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (window.IsKeyPressed(GLFW_KEY_S) || window.IsKeyPressed(GLFW_KEY_DOWN))
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (window.IsKeyPressed(GLFW_KEY_A) || window.IsKeyPressed(GLFW_KEY_LEFT))
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (window.IsKeyPressed(GLFW_KEY_D) || window.IsKeyPressed(GLFW_KEY_RIGHT))
-        camera.ProcessKeyboard(RIGHT, deltaTime);
+    if (!followCharacter) {
+        if (window.IsKeyPressed(GLFW_KEY_W))
+            camera.ProcessKeyboard(FORWARD, deltaTime);
+        if (window.IsKeyPressed(GLFW_KEY_S))
+            camera.ProcessKeyboard(BACKWARD, deltaTime);
+        if (window.IsKeyPressed(GLFW_KEY_A))
+            camera.ProcessKeyboard(LEFT, deltaTime);
+        if (window.IsKeyPressed(GLFW_KEY_D))
+            camera.ProcessKeyboard(RIGHT, deltaTime);
 
-    if (window.IsKeyPressed(GLFW_KEY_Z))
-        camera.ProcessKeyboard(UP, deltaTime);
-    if (window.IsKeyPressed(GLFW_KEY_X))
-        camera.ProcessKeyboard(DOWN, deltaTime);
+        if (window.IsKeyPressed(GLFW_KEY_Z))
+            camera.ProcessKeyboard(UP, deltaTime);
+        if (window.IsKeyPressed(GLFW_KEY_X))
+            camera.ProcessKeyboard(DOWN, deltaTime);
+    }
 
     float xOffset = window.GetXChange();
     float yOffset = window.GetYChange();
     if (xOffset != 0.0f || yOffset != 0.0f)
         camera.ProcessMouseMovement(xOffset, yOffset);
+
+    // ---- Movimiento del personaje principal ----
+    if (window.IsKeyPressed(GLFW_KEY_UP)) {
+        float velocity = moveSpeed * deltaTime;
+        personajePos += glm::vec3(
+            sin(glm::radians(personajeRot)) * velocity,
+            0.0f,
+            cos(glm::radians(personajeRot)) * velocity
+        );
+    }
+
+    if (window.IsKeyPressed(GLFW_KEY_DOWN)) {
+        float velocity = moveSpeed * deltaTime;
+        personajePos -= glm::vec3(
+            sin(glm::radians(personajeRot)) * velocity,
+            0.0f,
+            cos(glm::radians(personajeRot)) * velocity
+        );
+    }
+
+    if (window.IsKeyPressed(GLFW_KEY_LEFT)) {
+        personajeRot += turnSpeed * deltaTime;
+    }
+
+    if (window.IsKeyPressed(GLFW_KEY_RIGHT)) {
+        personajeRot -= turnSpeed * deltaTime;
+    }
+
+    // Alternar cámara
+    static bool QPressed = false;
+    bool now = window.IsKeyPressed(GLFW_KEY_Q);
+    if (now && !QPressed) {
+        thirdPerson = !thirdPerson;
+        QPressed = true;
+    }
+    else if (!now) {
+        QPressed = false;
+    }
+
+    static bool EPressed = false;
+    bool nowE = window.IsKeyPressed(GLFW_KEY_E);
+    if (nowE && !EPressed) {
+        followCharacter = !followCharacter;
+        EPressed = true;
+    }
+    else if (!nowE) {
+        EPressed = false;
+    }
 
     bool pNow = window.IsKeyPressed(GLFW_KEY_P);
     if (pNow && !puertaTogglePressed)
