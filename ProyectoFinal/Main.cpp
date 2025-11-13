@@ -32,10 +32,6 @@ Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-glm::vec3 pointLightPositions[] = {
-    glm::vec3(0.0f, 2.0f, 0.0f)
-};
-
 bool puertaAbierta = false;
 float rotPuerta = 0.0f;
 float velocidadPuerta = 1.0f;
@@ -1202,13 +1198,6 @@ void ProcessInput(Window& window)
         camera.ProcessKeyboard(UP, deltaTime);
     if (window.IsKeyPressed(GLFW_KEY_X))
         camera.ProcessKeyboard(DOWN, deltaTime);
-
-    if (window.IsKeyPressed(GLFW_KEY_L)) pointLightPositions[0].x += 0.05f;
-    if (window.IsKeyPressed(GLFW_KEY_J)) pointLightPositions[0].x -= 0.05f;
-    if (window.IsKeyPressed(GLFW_KEY_I)) pointLightPositions[0].y += 0.05f;
-    if (window.IsKeyPressed(GLFW_KEY_K)) pointLightPositions[0].y -= 0.05f;
-    if (window.IsKeyPressed(GLFW_KEY_U)) pointLightPositions[0].z -= 0.05f;
-    if (window.IsKeyPressed(GLFW_KEY_O)) pointLightPositions[0].z += 0.05f;
 
     float xOffset = window.GetXChange();
     float yOffset = window.GetYChange();
